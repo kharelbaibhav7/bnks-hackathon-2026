@@ -14,12 +14,29 @@ const saturation = (r, g, b) => {
   return max === 0 ? 0 : ((max - min) / max) * 100;
 };
 
+const rgbToHsv = (r, g, b) => {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  let h = 0;
+  if (delta !== 0) {
+    if (max === r) h = ((g - b) / delta) % 6;
+    else if (max === g) h = (b - r) / delta + 2;
+    else h = (r - g) / delta + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h, s: max === 0 ? 0 : delta / max, v: max };
+};
+
 export const isPotatoColor = (r, g, b) => {
-  const avg = (r + g + b) / 3;
-  const sat = saturation(r, g, b);
-  const brown = avg > 68 && avg < 205 && sat > 6 && sat < 58 && Math.abs(r - g) < 42 && r > 88 && g > 70 && b < r - 8 && b < 145;
-  const tan = r > 145 && g > 115 && g < 190 && b < 120 && Math.abs(r - g) < 55 && sat > 10 && sat < 50;
-  return brown || tan;
+  const { h, s, v } = rgbToHsv(r, g, b);
+  const earth = h >= 12 && h <= 62 && s >= 0.08 && s <= 0.78 && v >= 0.22 && v <= 0.93;
+  const beige = h >= 18 && h <= 70 && s >= 0.04 && s <= 0.22 && v >= 0.4 && v <= 0.9;
+  return earth || beige;
 };
 
 export const analyzeShelfImage = (image) => {
@@ -90,29 +107,27 @@ export const analyzeShelfImage = (image) => {
   };
 };
 
-export const detectPotatoFrame = (video, overlay) => {
-  if (!video?.videoWidth) return null;
+const workCanvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
 
-  const size = 120;
-  const work = document.createElement("canvas");
-  work.width = size;
-  work.height = size;
-  const ctx = work.getContext("2d", { willReadFrequently: true });
+export const detectPotatoFrame = (video, overlay) => {
+  if (!video?.videoWidth || !workCanvas) return null;
+
+  const size = 140;
+  workCanvas.width = size;
+  workCanvas.height = size;
+  const ctx = workCanvas.getContext("2d", { willReadFrequently: true });
   ctx.drawImage(video, 0, 0, size, size);
   const { data } = ctx.getImageData(0, 0, size, size);
 
-  const grid = 6;
+  const grid = 5;
   const cell = size / grid;
   const cells = [];
   let potatoPixels = 0;
-  let emptyCells = 0;
   let totalPixels = 0;
 
   for (let row = 0; row < grid; row += 1) {
     for (let col = 0; col < grid; col += 1) {
       let potato = 0;
-      let bright = 0;
-      let satSum = 0;
       let count = 0;
       for (let y = row * cell; y < (row + 1) * cell; y += 2) {
         for (let x = col * cell; x < (col + 1) * cell; x += 2) {
@@ -120,37 +135,34 @@ export const detectPotatoFrame = (video, overlay) => {
           const r = data[i];
           const g = data[i + 1];
           const b = data[i + 2];
-          const sat = saturation(r, g, b);
-          const avg = (r + g + b) / 3;
-          if (isPotatoColor(r, g, b)) potato += 1;
-          if (avg > 178 && sat < 26) bright += 1;
-          satSum += sat;
           count += 1;
           totalPixels += 1;
-          if (isPotatoColor(r, g, b)) potatoPixels += 1;
+          if (isPotatoColor(r, g, b)) {
+            potato += 1;
+            potatoPixels += 1;
+          }
         }
       }
-      const potatoRatio = potato / count;
-      const empty = bright / count > 0.55 && potatoRatio < 0.08;
-      if (empty) emptyCells += 1;
-      cells.push({ row, col, potato: potatoRatio > 0.18, empty });
+      cells.push({ row, col, potato: potato / count > 0.12, empty: potato / count < 0.04 });
     }
   }
 
   const potatoScore = potatoPixels / totalPixels;
-  const emptiness = emptyCells / (grid * grid);
-  const potatoPresent = potatoScore >= 0.045 || cells.filter((item) => item.potato).length >= 3;
+  const potatoCells = cells.filter((item) => item.potato).length;
+  const potatoPresent = potatoScore >= 0.02 || potatoCells >= 2;
 
   if (overlay) {
-    overlay.width = overlay.clientWidth || 320;
-    overlay.height = overlay.clientHeight || 220;
+    const width = overlay.clientWidth || overlay.offsetWidth || 320;
+    const height = overlay.clientHeight || overlay.offsetHeight || 220;
+    if (overlay.width !== width) overlay.width = width;
+    if (overlay.height !== height) overlay.height = height;
     const draw = overlay.getContext("2d");
     draw.clearRect(0, 0, overlay.width, overlay.height);
     const cw = overlay.width / grid;
     const ch = overlay.height / grid;
     cells.forEach((item) => {
-      if (!item.potato && !item.empty) return;
-      draw.fillStyle = item.potato ? "rgba(196, 149, 58, 0.35)" : "rgba(255, 255, 255, 0.22)";
+      if (!item.potato) return;
+      draw.fillStyle = "rgba(196, 149, 58, 0.4)";
       draw.fillRect(item.col * cw, item.row * ch, cw - 2, ch - 2);
     });
   }
@@ -158,9 +170,10 @@ export const detectPotatoFrame = (video, overlay) => {
   return {
     potatoScore,
     potatoPresent,
-    emptiness,
+    potatoCells,
+    emptiness: 1 - potatoScore,
     cells,
-    empty: !potatoPresent && emptiness >= 0.28,
+    empty: !potatoPresent,
   };
 };
 

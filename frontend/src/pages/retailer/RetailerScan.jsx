@@ -5,18 +5,20 @@ import { api } from "../../api/client.js";
 import { detectPotatoFrame } from "../../utils/vision.js";
 
 const POTATO = { name: "potato", displayName: "Potato", quantity: 25 };
-const MISSING_FRAMES = 4;
 
 export default function RetailerScan() {
   const navigate = useNavigate();
   const cameraRef = useRef(null);
   const overlayRef = useRef(null);
-  const loopRef = useRef(0);
+  const timerRef = useRef(0);
   const streamRef = useRef(null);
-  const seenPotatoRef = useRef(false);
-  const missingRef = useRef(0);
+  const seenRef = useRef(0);
+  const goneRef = useRef(0);
+  const peakRef = useRef(0);
+  const lockedRef = useRef(false);
   const addedRef = useRef(false);
   const [live, setLive] = useState(false);
+  const [phase, setPhase] = useState("idle");
   const [status, setStatus] = useState("Camera is off");
   const [reading, setReading] = useState(null);
   const [manual, setManual] = useState({ name: "potato", quantity: 25 });
@@ -32,68 +34,77 @@ export default function RetailerScan() {
   const addPotato = () => {
     if (addedRef.current) return;
     addedRef.current = true;
-    setCart((prev) => {
-      if (prev.some((item) => item.name === "potato")) return prev;
-      return [...prev, { ...POTATO }];
-    });
-    toast.success("Potato is off the shelf — added to restock");
+    setCart((prev) => (prev.some((item) => item.name === "potato") ? prev : [...prev, { ...POTATO }]));
+    setPhase("gone");
+    toast.success("Potato left the frame — added to restock");
   };
 
   const sampleFrame = () => {
-    const video = cameraRef.current;
-    const result = detectPotatoFrame(video, overlayRef.current);
+    const result = detectPotatoFrame(cameraRef.current, overlayRef.current);
     if (!result) return;
-
     setReading(result);
 
     if (result.potatoPresent) {
-      seenPotatoRef.current = true;
-      missingRef.current = 0;
-      setStatus(`Potato in frame · ${(result.potatoScore * 100).toFixed(0)}% of the shelf`);
+      seenRef.current += 1;
+      goneRef.current = 0;
+      peakRef.current = Math.max(peakRef.current, result.potatoScore);
+      if (seenRef.current >= 2) {
+        lockedRef.current = true;
+        setPhase("locked");
+      } else {
+        setPhase("seeing");
+      }
+      setStatus(
+        lockedRef.current
+          ? `Potato in frame · ${(result.potatoScore * 100).toFixed(0)}% · take it away to restock`
+          : `Seeing potato… hold it in view (${seenRef.current}/2)`
+      );
       return;
     }
 
-    const looksEmpty = result.empty || result.emptiness >= 0.32;
-    if (!looksEmpty) {
-      missingRef.current = 0;
-      setStatus("Looking for potato… keep the shelf in view");
+    const dropped = peakRef.current > 0 && result.potatoScore < Math.max(0.012, peakRef.current * 0.45);
+    if (lockedRef.current && (dropped || !result.potatoPresent)) {
+      goneRef.current += 1;
+      setPhase("leaving");
+      setStatus(`Potato left the frame · confirming ${goneRef.current}/3`);
+      if (goneRef.current >= 3) addPotato();
       return;
     }
 
-    missingRef.current += 1;
-    const needed = seenPotatoRef.current ? MISSING_FRAMES : MISSING_FRAMES + 2;
-    setStatus(`Potato not in frame · empty shelf ${missingRef.current}/${needed}`);
-    if (missingRef.current >= needed) addPotato();
+    setPhase("wait");
+    setStatus("Point the camera at potato first");
   };
 
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
       streamRef.current = stream;
-      cameraRef.current.srcObject = stream;
-      await cameraRef.current.play();
+      const video = cameraRef.current;
+      video.srcObject = stream;
+      await video.play();
+      seenRef.current = 0;
+      goneRef.current = 0;
+      peakRef.current = 0;
+      lockedRef.current = false;
       setLive(true);
-      setStatus("Live scan started · show potato, then an empty shelf");
-      cancelAnimationFrame(loopRef.current);
-      let last = 0;
-      const tick = (time) => {
-        if (time - last > 450) {
-          sampleFrame();
-          last = time;
-        }
-        loopRef.current = requestAnimationFrame(tick);
+      setStatus("Show potato to the camera");
+      clearInterval(timerRef.current);
+      const begin = () => {
+        clearInterval(timerRef.current);
+        timerRef.current = setInterval(sampleFrame, 280);
       };
-      loopRef.current = requestAnimationFrame(tick);
+      if (video.readyState >= 2) begin();
+      else video.onloadeddata = begin;
     } catch {
-      toast.error("Camera is not available. Allow camera access and try again.");
+      toast.error("Allow camera access and try again.");
     }
   };
 
   const stopCamera = () => {
-    cancelAnimationFrame(loopRef.current);
+    clearInterval(timerRef.current);
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (cameraRef.current) cameraRef.current.srcObject = null;
@@ -134,7 +145,7 @@ export default function RetailerScan() {
       <div className="page-head">
         <div>
           <h1>Live shelf scan</h1>
-          <p>The camera watches for potato. When potato leaves the frame and the shelf looks empty, it is added to restock on its own.</p>
+          <p>Show potato to the camera. When it leaves the frame, potato is added to restock automatically.</p>
         </div>
         {live ? (
           <button className="btn ghost" onClick={stopCamera}>Stop camera</button>
@@ -148,21 +159,10 @@ export default function RetailerScan() {
             <div className="live-stage">
               <video ref={cameraRef} muted playsInline autoPlay />
               <canvas ref={overlayRef} className="live-overlay" />
-              <div className={`live-badge ${reading?.potatoPresent ? "ok" : reading?.empty ? "hot" : ""}`}>
+              <div className={`live-badge ${phase === "locked" ? "ok" : phase === "leaving" || phase === "gone" ? "hot" : ""}`}>
                 {status}
               </div>
             </div>
-            {reading && (
-              <div className="scan-grid" style={{ marginTop: 12 }}>
-                {reading.cells.map((cell, index) => (
-                  <div
-                    key={index}
-                    className={`scan-cell ${cell.potato ? "full" : cell.empty ? "empty" : ""}`}
-                    style={cell.potato ? { background: "#c4953a" } : undefined}
-                  />
-                ))}
-              </div>
-            )}
           </div>
           <form className="card form" onSubmit={addManual}>
             <h3 className="serif" style={{ marginTop: 0 }}>Add manually</h3>
@@ -181,7 +181,7 @@ export default function RetailerScan() {
         <div className="card stack">
           <h3 className="serif" style={{ marginTop: 0 }}>Restock list</h3>
           <p style={{ color: "var(--muted)" }}>
-            Live watch is set to potato. Hold potatoes in view, then show the empty bay.
+            1. Start the camera. 2. Hold a potato in view until it locks. 3. Move the potato out of frame.
           </p>
           {cart.map((item) => (
             <div className="list-item" key={item.name}>
@@ -192,7 +192,13 @@ export default function RetailerScan() {
               <button
                 className="btn small ghost"
                 onClick={() => {
-                  if (item.name === "potato") addedRef.current = false;
+                  if (item.name === "potato") {
+                    addedRef.current = false;
+                    lockedRef.current = false;
+                    seenRef.current = 0;
+                    goneRef.current = 0;
+                    peakRef.current = 0;
+                  }
                   setCart((prev) => prev.filter((row) => row.name !== item.name));
                 }}
               >
@@ -200,7 +206,7 @@ export default function RetailerScan() {
               </button>
             </div>
           ))}
-          {cart.length === 0 && <div className="empty-state">Waiting for an empty potato shelf.</div>}
+          {cart.length === 0 && <div className="empty-state">Potato will appear here when it leaves the camera.</div>}
           <button className="btn gold" disabled={busy} onClick={placeOrder}>
             {busy ? "Asking farmers…" : "Send to farmers"}
           </button>
