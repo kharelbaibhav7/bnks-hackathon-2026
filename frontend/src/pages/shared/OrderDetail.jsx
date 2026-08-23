@@ -76,6 +76,7 @@ export default function OrderDetail() {
               delivery={live.delivery}
               current={live.currentLocation}
               label={live.driver?.name || "Awaiting driver"}
+              jobs={jobs}
             />
           )}
           <div className="card">

@@ -226,28 +226,80 @@ textarea { min-height: 90px; resize: vertical; }
 .scan-cell { height: 36px; border-radius: 8px; }
 .scan-cell.empty { background: #efe4cc; }
 .scan-cell.full { background: var(--leaf); }
+.map-shell { display: grid; gap: 8px; }
 .map {
   position: relative;
-  height: 320px;
+  height: 440px;
   border-radius: 20px;
   overflow: hidden;
-  background:
-    linear-gradient(#d7e3c8, #c5d3b4);
+  background: #d7e0d2;
   border: 1px solid var(--line);
 }
-.map svg { width: 100%; height: 100%; }
-.pin {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
+.map-canvas, .leaflet-container {
+  height: 100%;
+  width: 100%;
+  font-family: Outfit, sans-serif;
 }
-.pin.farm { background: var(--forest); color: #f6e7b2; }
-.pin.mart { background: var(--gold); color: #2a2208; }
-.pin.truck { background: var(--clay); color: white; }
+.leaflet-control-attribution { font-size: 10px; }
+.map-pin-wrap { background: none; border: 0; }
+.map-pin-stack {
+  width: 160px;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+.map-label {
+  background: #fffaf0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1.2;
+  padding: 3px 8px;
+  white-space: nowrap;
+  box-shadow: 0 6px 14px rgba(28, 25, 21, 0.12);
+}
+.map-pin {
+  width: 28px;
+  height: 28px;
+  border-radius: 50% 50% 50% 4px;
+  transform: rotate(-45deg);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 16px rgba(28, 25, 21, 0.22);
+  border: 2px solid #fffaf0;
+}
+.map-pin i {
+  transform: rotate(45deg);
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 800;
+}
+.map-pin.farm { background: var(--forest); color: #f6e7b2; }
+.map-pin.mart { background: var(--gold); color: #2a2208; }
+.map-pin.truck { background: var(--clay); color: white; }
+.leaflet-popup-content { font-family: Outfit, sans-serif; font-size: 13px; }
+.map-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--muted);
+}
+.map-keys { display: flex; gap: 14px; flex-wrap: wrap; }
+.map-keys i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.map-keys i.farm { background: var(--forest); }
+.map-keys i.mart { background: var(--gold); }
+.map-keys i.truck { background: var(--clay); }
+.map-stats { font-weight: 600; color: var(--ink); }
 .timeline { display: grid; gap: 10px; }
 .tl {
   display: grid;

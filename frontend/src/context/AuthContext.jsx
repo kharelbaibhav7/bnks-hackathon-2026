@@ -43,7 +43,10 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!user) return undefined;
-    const next = io("/", { transports: ["websocket", "polling"] });
+    const next = io({
+      path: "/socket.io",
+      transports: ["polling", "websocket"],
+    });
     next.emit("join", `user:${user._id}`);
     setSocket(next);
     return () => next.disconnect();
