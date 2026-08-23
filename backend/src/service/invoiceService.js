@@ -1,7 +1,9 @@
+import { KG_PER_TON } from "../constant/produce.js";
 import Allocation from "../models/Allocation.js";
 import Escrow from "../models/Escrow.js";
 import Invoice from "../models/Invoice.js";
 import Order from "../models/Order.js";
+import TransportJob from "../models/TransportJob.js";
 import User from "../models/User.js";
 
 const snap = (user = {}) => ({
@@ -25,6 +27,32 @@ const asItems = (items = []) =>
     amount: item.amount,
   }));
 
+export async function transportLinesForOrder(orderId) {
+  const jobs = await TransportJob.find({ order: orderId }).populate("driver", "name vehicleNumber");
+  return jobs.map((job) => {
+    const tons = Number(((job.totalKg || 0) / KG_PER_TON).toFixed(3));
+    const amount = Number(job.transportCost || tons * (job.costPerTon || 0));
+    return {
+      driverName: job.driver?.name || "Assigned driver",
+      vehicleNumber: job.driver?.vehicleNumber || "",
+      pickupArea: job.pickup?.area || "",
+      deliveryArea: job.delivery?.area || "",
+      totalKg: job.totalKg || 0,
+      costPerTon: job.costPerTon || 0,
+      amount: Number(amount.toFixed(2)),
+    };
+  }).filter((line) => line.totalKg > 0 || line.amount > 0);
+}
+
+const applyTransport = (invoice, produceTotal, lines) => {
+  const transportTotal = lines.reduce((sum, line) => sum + (line.amount || 0), 0);
+  invoice.produceTotal = produceTotal;
+  invoice.transport = lines;
+  invoice.transportTotal = transportTotal;
+  invoice.total = Number((produceTotal + transportTotal).toFixed(2));
+  return invoice;
+};
+
 export async function issueOrderInvoices(orderDoc) {
   if (!orderDoc) return [];
   const order = orderDoc.items ? orderDoc : await Order.findById(orderDoc);
@@ -32,6 +60,12 @@ export async function issueOrderInvoices(orderDoc) {
 
   const existing = await Invoice.find({ order: order._id }).sort({ createdAt: 1 });
   if (existing.length) {
+    const retailerInvoice = existing.find((item) => item.audience === "retailer");
+    if (retailerInvoice && !(retailerInvoice.transport || []).length) {
+      const produceTotal = retailerInvoice.produceTotal || retailerInvoice.items.reduce((sum, item) => sum + item.amount, 0);
+      applyTransport(retailerInvoice, produceTotal, await transportLinesForOrder(order._id));
+      await retailerInvoice.save();
+    }
     if (!order.invoiceSent) {
       order.invoiceSent = true;
       order.invoiceSentAt = existing[0].issuedAt;
@@ -55,7 +89,9 @@ export async function issueOrderInvoices(orderDoc) {
   const issuedAt = new Date();
   const firstEscrow = await Escrow.findOne({ order: order._id }).sort({ createdAt: 1 });
   const allItems = allocations.flatMap((allocation) => allocation.items);
-  const allTotal = allocations.reduce((sum, item) => sum + item.totalAmount, 0);
+  const produceTotal = allocations.reduce((sum, item) => sum + item.totalAmount, 0);
+  const transport = await transportLinesForOrder(order._id);
+  const transportTotal = transport.reduce((sum, line) => sum + line.amount, 0);
 
   const docs = [];
   docs.push(
@@ -72,7 +108,10 @@ export async function issueOrderInvoices(orderDoc) {
         address: "Multiple pickups",
       },
       items: asItems(allItems),
-      total: allTotal,
+      produceTotal,
+      transport,
+      transportTotal,
+      total: Number((produceTotal + transportTotal).toFixed(2)),
       escrowRef: firstEscrow?.reference || allocations[0].escrowRef || "",
       escrowStatus: firstEscrow?.status || "released",
       issuedAt,
@@ -91,6 +130,9 @@ export async function issueOrderInvoices(orderDoc) {
         retailer: snap(retailer),
         farmer: snap(allocation.farmer),
         items: asItems(allocation.items),
+        produceTotal: allocation.totalAmount,
+        transport: [],
+        transportTotal: 0,
         total: allocation.totalAmount,
         escrowRef: escrow?.reference || allocation.escrowRef || "",
         escrowStatus: escrow?.status || allocation.escrowStatus || "released",

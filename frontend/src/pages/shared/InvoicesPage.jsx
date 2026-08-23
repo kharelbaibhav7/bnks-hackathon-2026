@@ -21,7 +21,11 @@ export default function InvoicesPage() {
       <div className="page-head">
         <div>
           <h1>Invoices</h1>
-          <p>Created automatically when an order is delivered and escrow is released.</p>
+          <p>
+            {user.role === "retailer"
+              ? "Each completed order invoice includes produce and the driver haulage for that trip."
+              : "Created automatically when an order is delivered and escrow is released."}
+          </p>
         </div>
       </div>
       <div className="stack">
@@ -38,6 +42,7 @@ export default function InvoicesPage() {
                   <b>{invoice.number}</b>
                   <div style={{ color: "var(--muted)", fontSize: 13 }}>
                     {when(invoice.issuedAt)} · {invoice.audience === "farmer" ? invoice.retailer?.storeName : invoice.farmer?.farmName}
+                    {invoice.transportTotal ? ` · transport ${money(invoice.transportTotal)}` : ""}
                   </div>
                 </div>
                 <b>{money(invoice.total)}</b>

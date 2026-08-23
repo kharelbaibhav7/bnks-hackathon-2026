@@ -50,7 +50,34 @@ const recipientsFor = (user) => {
   return [...new Set(list)];
 };
 
-const invoiceHtml = ({ invoiceNumber, audience, retailer, farmer, order, items, total, escrow, issuedAt }) => `
+const transportRows = (transport = []) =>
+  !transport.length
+    ? ""
+    : `
+              <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-bottom:18px;">
+                <tr style="background:#3d6d7a;color:#f6e7b2;font-family:Arial,sans-serif;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;">
+                  <th align="left" style="padding:10px 12px;">Transport</th>
+                  <th align="right" style="padding:10px 12px;">Load</th>
+                  <th align="right" style="padding:10px 12px;">Rate / ton</th>
+                  <th align="right" style="padding:10px 12px;">Amount</th>
+                </tr>
+                ${transport
+                  .map(
+                    (line, index) => `
+                  <tr style="background:${index % 2 ? "#f7f0e1" : "#fffaf0"};font-family:Arial,sans-serif;font-size:14px;">
+                    <td style="padding:10px 12px;border-bottom:1px solid #e8dcc4;">
+                      ${[line.pickupArea, line.deliveryArea].filter(Boolean).join(" → ") || "Farm to mart"}<br/>
+                      <span style="color:#6b6256;font-size:12px;">${line.driverName || "Driver"}${line.vehicleNumber ? ` · ${line.vehicleNumber}` : ""}</span>
+                    </td>
+                    <td align="right" style="padding:10px 12px;border-bottom:1px solid #e8dcc4;">${line.totalKg} kg</td>
+                    <td align="right" style="padding:10px 12px;border-bottom:1px solid #e8dcc4;">${money(line.costPerTon)}</td>
+                    <td align="right" style="padding:10px 12px;border-bottom:1px solid #e8dcc4;"><strong>${money(line.amount)}</strong></td>
+                  </tr>`
+                  )
+                  .join("")}
+              </table>`;
+
+const invoiceHtml = ({ invoiceNumber, audience, retailer, farmer, order, items, total, escrow, issuedAt, transport = [], produceTotal }) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -141,6 +168,7 @@ const invoiceHtml = ({ invoiceNumber, audience, retailer, farmer, order, items, 
                   )
                   .join("")}
               </table>
+              ${transportRows(transport)}
 
               <table width="100%" cellspacing="0" cellpadding="0">
                 <tr>
@@ -154,9 +182,13 @@ const invoiceHtml = ({ invoiceNumber, audience, retailer, farmer, order, items, 
                     </div>
                   </td>
                   <td align="right" valign="top">
-                    <div style="font-family:Arial,sans-serif;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#6b6256;">Settled total</div>
+                    <div style="font-family:Arial,sans-serif;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#6b6256;">Invoice total</div>
                     <div style="font-size:34px;color:#1f3d2b;margin-top:4px;">${money(total)}</div>
-                    <div style="font-family:Arial,sans-serif;font-size:12px;color:#2f6f3e;">Paid from AgriFlow escrow · no middleman cut</div>
+                    <div style="font-family:Arial,sans-serif;font-size:12px;color:#2f6f3e;">
+                      ${transport.length
+                        ? `Produce ${money(produceTotal ?? total)} · Transport ${money(transport.reduce((sum, line) => sum + (line.amount || 0), 0))}`
+                        : "Paid from AgriFlow escrow · no middleman cut"}
+                    </div>
                   </td>
                 </tr>
               </table>
@@ -239,7 +271,9 @@ export const sendOrderInvoices = async (order, { forceEmail = false } = {}) => {
         },
         order,
         items: allItems,
-        total: allTotal,
+        total: (invoices.find((item) => item.audience === "retailer") || {}).total || allTotal,
+        produceTotal: allTotal,
+        transport: (invoices.find((item) => item.audience === "retailer") || {}).transport || [],
         escrow: firstEscrow,
         issuedAt,
       }),

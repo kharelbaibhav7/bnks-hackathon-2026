@@ -23,7 +23,7 @@
 }
 
 * { box-sizing: border-box; }
-html, body, #root { min-height: 100%; }
+html, body, #root { min-height: 100%; height: 100%; }
 body {
   margin: 0;
   background:
@@ -164,17 +164,23 @@ button { cursor: pointer; }
 .icon-dot.driver { background: #f3d5c4; color: #7a3010; }
 
 .shell {
-  min-height: 100vh;
+  height: 100%;
+  min-height: 100%;
   display: grid;
   grid-template-columns: 260px 1fr;
+  overflow: hidden;
 }
 .sidebar {
+  position: sticky;
+  top: 0;
+  height: 100%;
   background: var(--forest);
   color: #e8dec6;
   padding: 22px 16px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  overflow: hidden;
 }
 .sidebar a, .side-link {
   display: block;
@@ -183,8 +189,13 @@ button { cursor: pointer; }
   color: #e8dec6;
 }
 .sidebar a.active, .side-link.active { background: rgba(255,255,255,0.12); color: #fff; }
-.side-meta { margin-top: auto; font-size: 13px; color: #c9bea4; }
-.main { padding: 28px; }
+.sidebar nav { overflow-y: auto; min-height: 0; }
+.side-meta { margin-top: auto; font-size: 13px; color: #c9bea4; flex-shrink: 0; }
+.main {
+  padding: 28px;
+  height: 100%;
+  overflow-y: auto;
+}
 .page-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 22px; }
 .page-head h1 { margin: 0 0 6px; font-size: 36px; }
 .page-head p { margin: 0; color: var(--muted); }
@@ -409,6 +420,7 @@ textarea { min-height: 90px; resize: vertical; }
   align-items: center;
   gap: 12px;
 }
+.invoice-totals { margin-top: 8px; }
 .empty-state { padding: 28px; text-align: center; color: var(--muted); }
 .chat {
   display: grid;
@@ -426,7 +438,7 @@ textarea { min-height: 90px; resize: vertical; }
 @media (max-width: 900px) {
   .hero, .grid-2, .shell, .stats, .grid-3 { grid-template-columns: 1fr; }
   .sidebar { display: none; }
-  .main { padding: 18px 14px 90px; }
+  .main { padding: 18px 14px 90px; height: 100%; overflow-y: auto; }
   .mobile-nav {
     position: fixed;
     left: 0;
