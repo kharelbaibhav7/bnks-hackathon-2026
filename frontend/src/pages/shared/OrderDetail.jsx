@@ -64,9 +64,27 @@ export default function OrderDetail() {
       <div className="page-head">
         <div>
           <h1>Order tracking</h1>
-          <p>Split across farmers, then handed to transport. Payment leaves the mart wallet at pickup.</p>
+          <p>Split across farmers, then handed to transport. AgriFlow holds the mart’s money in escrow until delivery.</p>
         </div>
-        <StatusBadge status={order.status} />
+        <div className="row">
+          <StatusBadge status={order.status} />
+          {order.status === "delivered" && (
+            <button
+              className="btn small"
+              onClick={async () => {
+                try {
+                  const data = await api.sendInvoice(order._id);
+                  toast.success(`Invoice ${data.invoiceNumber || ""} emailed`);
+                  load();
+                } catch (error) {
+                  toast.error(error.message);
+                }
+              }}
+            >
+              Email invoice
+            </button>
+          )}
+        </div>
       </div>
       <div className="grid-2">
         <div className="stack">
@@ -104,7 +122,15 @@ export default function OrderDetail() {
               {allocation.items.map((item) => (
                 <div key={item.name} style={{ fontSize: 14 }}>{item.displayName} · {item.quantity}{item.unit}</div>
               ))}
-              {allocation.paid && <div className="badge ok" style={{ marginTop: 8 }}>Paid on handover {when(allocation.paidAt)}</div>}
+              {allocation.escrowStatus === "held" && (
+                <div className="badge warn" style={{ marginTop: 8 }}>Escrow {allocation.escrowRef} · held until delivery</div>
+              )}
+              {allocation.escrowStatus === "released" && (
+                <div className="badge ok" style={{ marginTop: 8 }}>Escrow released {when(allocation.paidAt)}</div>
+              )}
+              {order.invoiceSent && allocation.status === "delivered" && (
+                <div className="badge info" style={{ marginTop: 8 }}>Invoice {order.invoiceNumber} emailed</div>
+              )}
               {user.role === "retailer" && allocation.farmer && (
                 <div className="row" style={{ marginTop: 10 }}>
                   <a className="btn small ghost" href={`tel:${allocation.farmer.phone}`}>Call farmer</a>

@@ -27,6 +27,8 @@ const allocationSchema = new mongoose.Schema(
     rejectReason: { type: String, default: "" },
     paid: { type: Boolean, default: false },
     paidAt: { type: Date },
+    escrowStatus: { type: String, enum: ["none", "held", "released", "refunded"], default: "none" },
+    escrowRef: { type: String, default: "" },
     transportJob: { type: mongoose.Schema.Types.ObjectId, ref: "TransportJob" },
   },
   { timestamps: true }

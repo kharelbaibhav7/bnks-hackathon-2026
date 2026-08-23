@@ -18,6 +18,7 @@ import {
   listFarmerRequests,
   listRetailerOrders,
   rateDelivery,
+  resendInvoice,
   respondAllocation,
   retailerHistory,
 } from "../controller/orderController.js";
@@ -46,7 +47,7 @@ router.post(
   "/seed",
   asyncHandler(async (req, res) => {
     const result = await seedDatabase();
-    res.json({ success: true, message: "Demo data loaded", ...result });
+    res.json({ success: true, message: "Accounts loaded", ...result });
   })
 );
 
@@ -72,6 +73,7 @@ router.post("/allocations/:id/respond", protect, restrictTo("farmer"), respondAl
 router.get("/history/retailer", protect, restrictTo("retailer"), retailerHistory);
 router.get("/history/farmer", protect, restrictTo("farmer"), farmerHistory);
 router.post("/ratings", protect, restrictTo("retailer"), rateDelivery);
+router.post("/orders/:id/invoice", protect, resendInvoice);
 
 router.get("/transport/open", protect, restrictTo("driver"), listOpenJobs);
 router.get("/transport/mine", protect, restrictTo("driver"), listMyJobs);

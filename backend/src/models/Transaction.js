@@ -6,7 +6,15 @@ const transactionSchema = new mongoose.Schema(
     counterparty: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     type: {
       type: String,
-      enum: ["topup", "order_payment", "order_receipt", "transport_fee"],
+      enum: [
+        "topup",
+        "order_payment",
+        "order_receipt",
+        "transport_fee",
+        "escrow_hold",
+        "escrow_release",
+        "escrow_refund",
+      ],
       required: true,
     },
     amount: { type: Number, required: true },

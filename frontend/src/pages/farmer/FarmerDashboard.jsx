@@ -19,7 +19,7 @@ export default function FarmerDashboard() {
       <div className="page-head">
         <div>
           <h1>{user.farmName || user.name}</h1>
-          <p>Keep produce listed. Accept what you can fill. Money arrives when you hand the load to the driver.</p>
+          <p>Keep produce listed. Accept what you can fill. AgriFlow escrow pays you when the mart receives the load.</p>
         </div>
         <div className="badge ok">Rating {user.rating}★</div>
       </div>
@@ -27,7 +27,7 @@ export default function FarmerDashboard() {
         <div className="card stat"><b>{stats.requests || 0}</b><span>New mart requests</span></div>
         <div className="card stat"><b>{stats.accepted || 0}</b><span>Accepted, not done</span></div>
         <div className="card stat"><b>{money(stats.soldAmount)}</b><span>Lifetime sales</span></div>
-        <div className="card stat"><b>{money(stats.wallet)}</b><span>AgriFlow wallet</span></div>
+        <div className="card stat"><b>{money(stats.wallet)}</b><span>Released to wallet</span></div>
       </div>
       <div className="card">
         <div className="page-head" style={{ marginBottom: 8 }}>

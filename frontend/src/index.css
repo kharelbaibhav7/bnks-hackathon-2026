@@ -52,16 +52,21 @@ button { cursor: pointer; }
   gap: 10px;
   font-weight: 700;
 }
-.mark {
-  width: 38px;
-  height: 38px;
+.brand-logo {
   border-radius: 12px;
-  display: grid;
-  place-items: center;
-  background: var(--forest);
-  color: #f6e7b2;
-  font-family: Fraunces, serif;
+  object-fit: cover;
+  background: #050505;
+  display: block;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.18);
 }
+.brand-word {
+  font-family: Fraunces, Georgia, serif;
+  font-size: 22px;
+  letter-spacing: -0.04em;
+}
+.brand-word span { color: var(--gold); }
+.brand-light .brand-word { color: #f6e7b2; }
+.brand-light .brand-word span { color: #f0d36a; }
 .hero {
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
@@ -204,14 +209,14 @@ textarea { min-height: 90px; resize: vertical; }
   padding: 24px;
 }
 .auth-card { width: min(480px, 100%); padding: 28px; }
-.demo-grid { display: grid; gap: 8px; margin-top: 10px; }
-.demo-btn {
-  text-align: left;
-  border: 1px dashed var(--line);
+.bank-box {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
   background: #f7f0e1;
-  border-radius: 12px;
-  padding: 10px 12px;
 }
+.bank-steps { display: flex; gap: 8px; font-size: 12px; font-weight: 700; margin-bottom: 10px; color: var(--muted); }
+.bank-steps .on { color: var(--forest); }
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); font-size: 14px; }
 .table th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -222,6 +227,41 @@ textarea { min-height: 90px; resize: vertical; }
   background: #f7f3e6;
   text-align: center;
 }
+.live-stage {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #1c1915;
+  min-height: 240px;
+}
+.live-stage video {
+  width: 100%;
+  display: block;
+  min-height: 240px;
+  object-fit: cover;
+}
+.live-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.live-badge {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(28, 25, 21, 0.72);
+  color: #f8f1de;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+}
+.live-badge.ok { background: rgba(47, 111, 62, 0.84); }
+.live-badge.hot { background: rgba(196, 92, 38, 0.84); }
 .scan-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 12px; }
 .scan-cell { height: 36px; border-radius: 8px; }
 .scan-cell.empty { background: #efe4cc; }

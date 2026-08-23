@@ -161,7 +161,7 @@ export const seedDatabase = async () => {
 if (process.argv[1] && process.argv[1].includes("seed.js")) {
   await mongoose.connect(dbUrl);
   const result = await seedDatabase();
-  console.log("AgriFlow demo data ready");
+  console.log("AgriFlow accounts ready");
   console.log(result);
   await mongoose.disconnect();
   process.exit(0);

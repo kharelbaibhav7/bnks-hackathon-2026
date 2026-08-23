@@ -8,7 +8,7 @@ import { kg, money, when } from "../../utils/format.js";
 
 const STEPS = [
   ["en_route_pickup", "Heading to farm"],
-  ["picked_up", "Collected — pay farmer"],
+  ["picked_up", "Collected — escrow still held"],
   ["en_route_delivery", "Driving to mart"],
   ["delivered", "Handed to mart"],
 ];
@@ -35,7 +35,8 @@ export default function DriverJobDetail() {
     const lng = job.currentLocation?.lng + (status === "delivered" ? -0.01 : 0.003);
     try {
       await api.jobStatus(job._id, { status, lat, lng });
-      if (status === "picked_up") toast.success("Farmer paid from the mart wallet");
+      if (status === "picked_up") toast.success("Goods collected. Funds stay in AgriFlow escrow");
+      if (status === "delivered") toast.success("Delivered. Escrow released and invoices emailed");
       load();
     } catch (error) {
       toast.error(error.message);

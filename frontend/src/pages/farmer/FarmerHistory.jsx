@@ -36,7 +36,7 @@ export default function FarmerHistory() {
               <b>{money(sale.amount)}</b>
             </div>
           ))}
-          {sales.length === 0 && <div className="empty-state">Payments appear when a driver collects your goods.</div>}
+          {sales.length === 0 && <div className="empty-state">Sales appear when escrow is released on delivery.</div>}
         </div>
         <div className="card">
           <h3 className="serif" style={{ marginTop: 0 }}>Order outcomes</h3>

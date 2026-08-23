@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
+import Brand from "../components/Brand.jsx";
 
 export default function Landing() {
   return (
     <div className="hero-wrap">
       <div className="page">
         <header className="topbar">
-          <div className="brand"><div className="mark">A</div> AgriFlow</div>
+          <Brand />
           <div className="row">
             <Link className="btn ghost" to="/login">Sign in</Link>
             <Link className="btn gold" to="/register">Create account</Link>
@@ -17,11 +18,11 @@ export default function Landing() {
             <h1>Empty shelves turn into farmer orders in one pass.</h1>
             <p className="lede">
               A mart scans what is missing, AgriFlow splits the request across farmers who actually have the crop,
-              a nearby driver picks up the load, and payment moves the moment goods change hands.
+              a nearby driver picks up the load, and AgriFlow escrow holds the mart’s money until delivery is confirmed.
             </p>
             <div className="row" style={{ marginTop: 22 }}>
               <Link className="btn" to="/register">Start as a mart</Link>
-              <Link className="btn ghost" to="/login">Use demo accounts</Link>
+              <Link className="btn ghost" to="/login">Sign in</Link>
             </div>
           </div>
           <div className="hero-card panel">
@@ -31,14 +32,14 @@ export default function Landing() {
                 <div className="icon-dot retailer">M</div>
                 <div>
                   <b>Big mart</b>
-                  <span>Scan shelves or type what is empty. Load wallet. Watch the truck in real time.</span>
+                  <span>Scan shelves or type what is empty. Load wallet. Escrow locks funds when a farmer accepts.</span>
                 </div>
               </div>
               <div className="role">
                 <div className="icon-dot farmer">F</div>
                 <div>
                   <b>Farmer</b>
-                  <span>Keep produce stock updated. Accept only what you can supply. Get paid on handover.</span>
+                  <span>Keep produce stock updated. Accept only what you can supply. Escrow pays you on delivery.</span>
                 </div>
               </div>
               <div className="role">

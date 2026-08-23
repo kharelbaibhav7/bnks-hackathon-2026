@@ -18,7 +18,7 @@ export default function FarmerOrders() {
   const respond = async (id, action) => {
     try {
       const data = await api.respond(id, { action });
-      toast.success(action === "accept" ? "Accepted. A driver can now pick this up." : "Declined. AgriFlow will ask another farm.");
+      toast.success(action === "accept" ? "Accepted. Mart funds are now locked in AgriFlow escrow." : "Declined. AgriFlow will ask another farm.");
       load();
       return data;
     } catch (error) {

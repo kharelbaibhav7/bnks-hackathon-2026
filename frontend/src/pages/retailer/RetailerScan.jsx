@@ -2,68 +2,103 @@ import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api/client.js";
-import { analyzeShelfImage, fileToImage } from "../../utils/vision.js";
+import { detectPotatoFrame } from "../../utils/vision.js";
+
+const POTATO = { name: "potato", displayName: "Potato", quantity: 25 };
+const MISSING_FRAMES = 4;
 
 export default function RetailerScan() {
   const navigate = useNavigate();
   const cameraRef = useRef(null);
-  const [vision, setVision] = useState(null);
-  const [result, setResult] = useState(null);
-  const [manual, setManual] = useState({ name: "tomato", quantity: 25 });
+  const overlayRef = useRef(null);
+  const loopRef = useRef(0);
+  const streamRef = useRef(null);
+  const seenPotatoRef = useRef(false);
+  const missingRef = useRef(0);
+  const addedRef = useRef(false);
+  const [live, setLive] = useState(false);
+  const [status, setStatus] = useState("Camera is off");
+  const [reading, setReading] = useState(null);
+  const [manual, setManual] = useState({ name: "potato", quantity: 25 });
   const [cart, setCart] = useState([]);
   const [catalog, setCatalog] = useState([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     api.catalog().then((data) => setCatalog(data.catalog || [])).catch(() => {});
+    return () => stopCamera();
   }, []);
 
-  const runScan = async (image) => {
-    const analysis = analyzeShelfImage(image);
-    setVision(analysis);
-    const data = await api.scan(analysis);
-    setResult(data);
-    setCart(
-      (data.emptyOrLow || []).map((item) => ({
-        name: item.name,
-        displayName: item.displayName,
-        quantity: item.suggestedOrder,
-      }))
-    );
+  const addPotato = () => {
+    if (addedRef.current) return;
+    addedRef.current = true;
+    setCart((prev) => {
+      if (prev.some((item) => item.name === "potato")) return prev;
+      return [...prev, { ...POTATO }];
+    });
+    toast.success("Potato is off the shelf — added to restock");
   };
 
-  const onFile = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    try {
-      const image = await fileToImage(file);
-      await runScan(image);
-      toast.success("Shelf photo read");
-    } catch (error) {
-      toast.error(error.message);
+  const sampleFrame = () => {
+    const video = cameraRef.current;
+    const result = detectPotatoFrame(video, overlayRef.current);
+    if (!result) return;
+
+    setReading(result);
+
+    if (result.potatoPresent) {
+      seenPotatoRef.current = true;
+      missingRef.current = 0;
+      setStatus(`Potato in frame · ${(result.potatoScore * 100).toFixed(0)}% of the shelf`);
+      return;
     }
+
+    const looksEmpty = result.empty || result.emptiness >= 0.32;
+    if (!looksEmpty) {
+      missingRef.current = 0;
+      setStatus("Looking for potato… keep the shelf in view");
+      return;
+    }
+
+    missingRef.current += 1;
+    const needed = seenPotatoRef.current ? MISSING_FRAMES : MISSING_FRAMES + 2;
+    setStatus(`Potato not in frame · empty shelf ${missingRef.current}/${needed}`);
+    if (missingRef.current >= needed) addPotato();
   };
 
-  const openCamera = async () => {
+  const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      streamRef.current = stream;
       cameraRef.current.srcObject = stream;
       await cameraRef.current.play();
+      setLive(true);
+      setStatus("Live scan started · show potato, then an empty shelf");
+      cancelAnimationFrame(loopRef.current);
+      let last = 0;
+      const tick = (time) => {
+        if (time - last > 450) {
+          sampleFrame();
+          last = time;
+        }
+        loopRef.current = requestAnimationFrame(tick);
+      };
+      loopRef.current = requestAnimationFrame(tick);
     } catch {
-      toast.error("Camera is not available. Upload a photo instead.");
+      toast.error("Camera is not available. Allow camera access and try again.");
     }
   };
 
-  const capture = async () => {
-    const video = cameraRef.current;
-    if (!video?.videoWidth) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-    const image = new Image();
-    image.onload = () => runScan(image).catch((error) => toast.error(error.message));
-    image.src = canvas.toDataURL("image/jpeg");
+  const stopCamera = () => {
+    cancelAnimationFrame(loopRef.current);
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (cameraRef.current) cameraRef.current.srcObject = null;
+    setLive(false);
+    setStatus("Camera is off");
   };
 
   const addManual = (event) => {
@@ -81,10 +116,11 @@ export default function RetailerScan() {
     try {
       const data = await api.createOrder({
         items: cart,
-        source: vision ? "scan" : "manual",
-        notes: "Restock from shelf check",
+        source: "scan",
+        notes: "Restock from live shelf scan",
       });
       toast.success(data.message);
+      stopCamera();
       navigate(`/retailer/orders/${data.order._id}`);
     } catch (error) {
       toast.error(error.message);
@@ -97,33 +133,35 @@ export default function RetailerScan() {
     <div>
       <div className="page-head">
         <div>
-          <h1>Shelf scan</h1>
-          <p>Photograph the produce bay. AgriFlow looks for empty-looking cells and matches them with your low stock. You can always correct the list by hand.</p>
+          <h1>Live shelf scan</h1>
+          <p>The camera watches for potato. When potato leaves the frame and the shelf looks empty, it is added to restock on its own.</p>
         </div>
+        {live ? (
+          <button className="btn ghost" onClick={stopCamera}>Stop camera</button>
+        ) : (
+          <button className="btn gold" onClick={startCamera}>Start live scan</button>
+        )}
       </div>
       <div className="grid-2">
         <div className="stack">
           <div className="scan-box">
-            <p>Upload a shelf photo or use the camera.</p>
-            <div className="row" style={{ justifyContent: "center" }}>
-              <label className="btn">
-                Upload photo
-                <input type="file" accept="image/*" hidden onChange={onFile} />
-              </label>
-              <button className="btn ghost" type="button" onClick={openCamera}>Open camera</button>
-              <button className="btn clay" type="button" onClick={capture}>Capture</button>
+            <div className="live-stage">
+              <video ref={cameraRef} muted playsInline autoPlay />
+              <canvas ref={overlayRef} className="live-overlay" />
+              <div className={`live-badge ${reading?.potatoPresent ? "ok" : reading?.empty ? "hot" : ""}`}>
+                {status}
+              </div>
             </div>
-            <video ref={cameraRef} style={{ width: "100%", marginTop: 12, borderRadius: 16 }} muted playsInline />
-            {vision && (
-              <>
-                <img src={vision.preview} alt="scan preview" style={{ width: "100%", borderRadius: 16, marginTop: 12 }} />
-                <div className="scan-grid">
-                  {vision.cells.map((cell, index) => (
-                    <div key={index} className={`scan-cell ${cell.empty ? "empty" : "full"}`} />
-                  ))}
-                </div>
-                <p>Emptiness score {(vision.emptinessScore * 100).toFixed(0)}%</p>
-              </>
+            {reading && (
+              <div className="scan-grid" style={{ marginTop: 12 }}>
+                {reading.cells.map((cell, index) => (
+                  <div
+                    key={index}
+                    className={`scan-cell ${cell.potato ? "full" : cell.empty ? "empty" : ""}`}
+                    style={cell.potato ? { background: "#c4953a" } : undefined}
+                  />
+                ))}
+              </div>
             )}
           </div>
           <form className="card form" onSubmit={addManual}>
@@ -142,19 +180,27 @@ export default function RetailerScan() {
         </div>
         <div className="card stack">
           <h3 className="serif" style={{ marginTop: 0 }}>Restock list</h3>
-          {result && <p style={{ color: "var(--muted)" }}>{result.message}</p>}
+          <p style={{ color: "var(--muted)" }}>
+            Live watch is set to potato. Hold potatoes in view, then show the empty bay.
+          </p>
           {cart.map((item) => (
             <div className="list-item" key={item.name}>
               <div>
                 <b>{item.displayName}</b>
                 <div style={{ color: "var(--muted)", fontSize: 13 }}>Order {item.quantity} kg</div>
               </div>
-              <button className="btn small ghost" onClick={() => setCart((prev) => prev.filter((row) => row.name !== item.name))}>
+              <button
+                className="btn small ghost"
+                onClick={() => {
+                  if (item.name === "potato") addedRef.current = false;
+                  setCart((prev) => prev.filter((row) => row.name !== item.name));
+                }}
+              >
                 Remove
               </button>
             </div>
           ))}
-          {cart.length === 0 && <div className="empty-state">Nothing flagged yet. Scan a photo or add produce yourself.</div>}
+          {cart.length === 0 && <div className="empty-state">Waiting for an empty potato shelf.</div>}
           <button className="btn gold" disabled={busy} onClick={placeOrder}>
             {busy ? "Asking farmers…" : "Send to farmers"}
           </button>

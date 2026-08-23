@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema(
     rating: { type: Number, default: 5 },
     ratingCount: { type: Number, default: 0 },
     walletBalance: { type: Number, default: 0 },
+    escrowHeld: { type: Number, default: 0 },
     farmName: { type: String, default: "" },
     storeName: { type: String, default: "" },
     vehicleType: { type: String, default: "" },

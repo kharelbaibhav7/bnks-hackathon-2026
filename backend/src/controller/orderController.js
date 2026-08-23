@@ -13,7 +13,8 @@ import {
   refreshOrderTotals,
   sourceOrderFromFarmers,
 } from "../service/matchingService.js";
-import { payFarmerOnHandover } from "../service/walletService.js";
+import { holdInEscrow } from "../service/escrowService.js";
+import { sendOrderInvoices } from "../service/mailService.js";
 
 const populateOrder = (id) =>
   Order.findById(id).populate("retailer", "-password");
@@ -124,11 +125,20 @@ export const respondAllocation = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error(`Not enough ${item.displayName} left in your inventory`);
       }
+    }
+    allocation.status = "accepted";
+    await holdInEscrow({
+      allocation,
+      note: `Escrow locked when ${req.user.name} accepted the mart request`,
+    });
+    for (const item of allocation.items) {
+      const stock = await InventoryItem.findOne({
+        owner: req.user._id,
+        name: item.name,
+      });
       stock.quantity = Number((stock.quantity - item.quantity).toFixed(2));
       await stock.save();
     }
-    allocation.status = "accepted";
-    await allocation.save();
     await createTransportJobForAllocation(allocation);
   } else {
     allocation.status = "rejected";
@@ -165,6 +175,28 @@ export const farmerHistory = asyncHandler(async (req, res) => {
     .populate("retailer", "name storeName")
     .sort({ createdAt: -1 });
   res.json({ success: true, allocations, sales });
+});
+
+export const resendInvoice = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) {
+    res.status(404);
+    throw new Error("Order not found");
+  }
+  const isParty =
+    String(order.retailer) === String(req.user._id) ||
+    (await Allocation.exists({ order: order._id, farmer: req.user._id }));
+  if (!isParty) {
+    res.status(403);
+    throw new Error("You cannot request this invoice");
+  }
+  if (order.status !== "delivered") {
+    res.status(400);
+    throw new Error("Invoice is sent only after the full order is delivered");
+  }
+  order.invoiceSent = false;
+  const result = await sendOrderInvoices(order);
+  res.json({ success: true, ...result });
 });
 
 export const rateDelivery = asyncHandler(async (req, res) => {
@@ -205,6 +237,7 @@ export const dashboardStats = asyncHandler(async (req, res) => {
         inTransit,
         empty,
         wallet: req.user.walletBalance,
+        escrowHeld: req.user.escrowHeld || 0,
       },
     });
   }
@@ -228,6 +261,7 @@ export const dashboardStats = asyncHandler(async (req, res) => {
         soldAmount,
         listedItems: inventory.length,
         wallet: req.user.walletBalance,
+        escrowHeld: req.user.escrowHeld || 0,
         rating: req.user.rating,
       },
     });
@@ -252,46 +286,6 @@ export const dashboardStats = asyncHandler(async (req, res) => {
       costPerTon: req.user.costPerTon,
     },
   });
-});
-
-export const completeHandoverPayment = asyncHandler(async ({ allocation, job, note }) => {
-  if (allocation.paid) return allocation;
-  await payFarmerOnHandover({
-    retailerId: allocation.retailer,
-    farmerId: allocation.farmer,
-    amount: allocation.totalAmount,
-    order: allocation.order,
-    allocation: allocation._id,
-    note,
-  });
-  allocation.paid = true;
-  allocation.paidAt = new Date();
-  allocation.status = "handed_over";
-  await allocation.save();
-
-  for (const item of allocation.items) {
-    await SaleRecord.create({
-      farmer: allocation.farmer,
-      retailer: allocation.retailer,
-      order: allocation.order,
-      allocation: allocation._id,
-      itemName: item.name,
-      displayName: item.displayName,
-      quantity: item.quantity,
-      unit: item.unit,
-      pricePerUnit: item.pricePerUnit,
-      amount: item.amount,
-    });
-  }
-
-  const io = job?.reqApp?.get?.("io");
-  if (io) {
-    io.to(`order:${allocation.order}`).emit("payment", {
-      allocationId: allocation._id,
-      amount: allocation.totalAmount,
-    });
-  }
-  return allocation;
 });
 
 export { User };

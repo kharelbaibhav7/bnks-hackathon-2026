@@ -1,6 +1,7 @@
 import { NavLink, Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { money } from "../utils/format.js";
+import Brand from "./Brand.jsx";
 
 const NAV = {
   retailer: [
@@ -8,7 +9,7 @@ const NAV = {
     ["Scan shelves", "/retailer/scan"],
     ["Inventory", "/retailer/inventory"],
     ["Orders", "/retailer/orders"],
-    ["Wallet", "/retailer/wallet"],
+    ["Escrow wallet", "/retailer/wallet"],
     ["Messages", "/retailer/messages"],
   ],
   farmer: [
@@ -16,7 +17,7 @@ const NAV = {
     ["My produce", "/farmer/inventory"],
     ["Order requests", "/farmer/orders"],
     ["Sales history", "/farmer/history"],
-    ["Wallet", "/farmer/wallet"],
+    ["Escrow wallet", "/farmer/wallet"],
     ["Messages", "/farmer/messages"],
   ],
   driver: [
@@ -43,12 +44,9 @@ export default function Layout({ role }) {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand">
-          <div className="mark">A</div>
-          <div>
-            <strong>AgriFlow</strong>
-            <div style={{ fontSize: 12, color: "#c9bea4" }}>{user.role}</div>
-          </div>
+        <div>
+          <Brand light />
+          <div style={{ fontSize: 12, color: "#c9bea4", marginTop: 4 }}>{user.role}</div>
         </div>
         <nav className="stack">
           {links.map(([label, to]) => (
@@ -60,7 +58,8 @@ export default function Layout({ role }) {
         <div className="side-meta">
           <div>{title}</div>
           <div>{user.area}, {user.city}</div>
-          <div>Wallet {money(user.walletBalance)}</div>
+          <div>Available {money(user.walletBalance)}</div>
+          {user.role === "retailer" && <div>Escrow {money(user.escrowHeld)}</div>}
           <button className="btn small ghost" style={{ marginTop: 10, color: "#f8f1de", borderColor: "#6c8a70" }} onClick={logout}>
             Sign out
           </button>

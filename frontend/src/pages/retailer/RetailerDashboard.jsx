@@ -26,7 +26,7 @@ export default function RetailerDashboard() {
         <div className="card stat"><b>{stats.empty || 0}</b><span>Empty / low items</span></div>
         <div className="card stat"><b>{stats.pending || 0}</b><span>Waiting on farmers</span></div>
         <div className="card stat"><b>{stats.inTransit || 0}</b><span>On the road</span></div>
-        <div className="card stat"><b>{money(stats.wallet)}</b><span>Wallet ready to pay</span></div>
+        <div className="card stat"><b>{money(stats.escrowHeld)}</b><span>Locked in escrow</span></div>
       </div>
       <div className="card">
         <div className="page-head" style={{ marginBottom: 8 }}>

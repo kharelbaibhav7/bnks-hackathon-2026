@@ -6,7 +6,8 @@ import SaleRecord from "../models/SaleRecord.js";
 import TransportJob from "../models/TransportJob.js";
 import { KG_PER_TON } from "../constant/produce.js";
 import { refreshOrderTotals } from "../service/matchingService.js";
-import { payFarmerOnHandover } from "../service/walletService.js";
+import { releaseEscrow } from "../service/escrowService.js";
+import { sendOrderInvoices } from "../service/mailService.js";
 
 const populateJob = (id) =>
   TransportJob.findById(id)
@@ -167,20 +168,22 @@ export const updateJobStatus = asyncHandler(async (req, res) => {
 
   if (next === "picked_up") {
     const allocation = await Allocation.findById(job.allocation);
-    if (allocation && !allocation.paid) {
-      await payFarmerOnHandover({
-        retailerId: allocation.retailer,
-        farmerId: allocation.farmer,
-        amount: allocation.totalAmount,
-        order: allocation.order,
-        allocation: allocation._id,
-        note: `Paid when goods were handed to ${req.user.name}`,
-      });
-      allocation.paid = true;
-      allocation.paidAt = new Date();
+    if (allocation) {
       allocation.status = "handed_over";
       await allocation.save();
-
+    }
+    addHistory(job, "picked_up", req.body.note || "Goods collected. Funds remain in AgriFlow escrow until delivery.");
+  } else if (next === "delivered") {
+    const allocation = await Allocation.findById(job.allocation);
+    if (allocation) {
+      if (allocation.escrowStatus !== "released") {
+        await releaseEscrow({
+          allocation,
+          note: `Escrow released when ${req.user.name} delivered goods to the mart`,
+        });
+      }
+      allocation.status = "delivered";
+      await allocation.save();
       for (const item of allocation.items) {
         await SaleRecord.create({
           farmer: allocation.farmer,
@@ -195,16 +198,6 @@ export const updateJobStatus = asyncHandler(async (req, res) => {
           amount: item.amount,
         });
       }
-    } else if (allocation) {
-      allocation.status = "handed_over";
-      await allocation.save();
-    }
-    addHistory(job, "picked_up", req.body.note || "Goods collected from farmer. Payment released.");
-  } else if (next === "delivered") {
-    const allocation = await Allocation.findById(job.allocation);
-    if (allocation) {
-      allocation.status = "delivered";
-      await allocation.save();
       for (const item of allocation.items) {
         await InventoryItem.findOneAndUpdate(
           { owner: allocation.retailer, name: item.name },
@@ -223,7 +216,7 @@ export const updateJobStatus = asyncHandler(async (req, res) => {
         );
       }
     }
-    addHistory(job, "delivered", req.body.note || "Goods delivered to the mart");
+    addHistory(job, "delivered", req.body.note || "Goods delivered. Escrow released to the farmer.");
   } else {
     addHistory(job, next, req.body.note || `Status updated to ${next.replace(/_/g, " ")}`);
     if (next === "en_route_delivery") {
@@ -239,7 +232,16 @@ export const updateJobStatus = asyncHandler(async (req, res) => {
   await job.save();
 
   const order = await Order.findById(job.order);
-  if (order) await refreshOrderTotals(order);
+  if (order) {
+    await refreshOrderTotals(order);
+    if (order.status === "delivered" && !order.invoiceSent) {
+      try {
+        await sendOrderInvoices(order);
+      } catch (error) {
+        console.error("Invoice email failed:", error.message);
+      }
+    }
+  }
 
   emitTracking(req, job);
   const fresh = await populateJob(job._id);

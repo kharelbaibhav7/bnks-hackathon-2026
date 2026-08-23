@@ -33,6 +33,9 @@ const orderSchema = new mongoose.Schema(
     estimatedTotal: { type: Number, default: 0 },
     paidTotal: { type: Number, default: 0 },
     source: { type: String, enum: ["scan", "manual"], default: "manual" },
+    invoiceSent: { type: Boolean, default: false },
+    invoiceSentAt: { type: Date },
+    invoiceNumber: { type: String, default: "" },
   },
   { timestamps: true }
 );

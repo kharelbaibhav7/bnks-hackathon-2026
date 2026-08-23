@@ -43,6 +43,7 @@ export const api = {
   retailerHistory: () => request("/history/retailer"),
   farmerHistory: () => request("/history/farmer"),
   rate: (body) => request("/ratings", { method: "POST", body }),
+  sendInvoice: (id) => request(`/orders/${id}/invoice`, { method: "POST" }),
   openJobs: (query = "") => request(`/transport/open${query}`),
   myJobs: () => request("/transport/mine"),
   job: (id) => request(`/transport/${id}`),
