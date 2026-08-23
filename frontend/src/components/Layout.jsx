@@ -1,6 +1,7 @@
 import { NavLink, Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { money } from "../utils/format.js";
+import { FadeIn } from "./PageMotion.jsx";
 import Brand from "./Brand.jsx";
 
 const NAV = {
@@ -9,6 +10,7 @@ const NAV = {
     ["Scan shelves", "/retailer/scan"],
     ["Inventory", "/retailer/inventory"],
     ["Orders", "/retailer/orders"],
+    ["Invoices", "/retailer/invoices"],
     ["Escrow wallet", "/retailer/wallet"],
     ["Messages", "/retailer/messages"],
   ],
@@ -16,6 +18,7 @@ const NAV = {
     ["Overview", "/farmer"],
     ["My produce", "/farmer/inventory"],
     ["Order requests", "/farmer/orders"],
+    ["Invoices", "/farmer/invoices"],
     ["Sales history", "/farmer/history"],
     ["Escrow wallet", "/farmer/wallet"],
     ["Messages", "/farmer/messages"],
@@ -66,10 +69,15 @@ export default function Layout({ role }) {
         </div>
       </aside>
       <main className="main">
-        <Outlet />
+        <PageMotion>
+          <Outlet />
+        </PageMotion>
       </main>
       <nav className="mobile-nav">
-        {links.slice(0, 4).map(([label, to]) => (
+        {(user.role === "driver"
+          ? links.slice(0, 4)
+          : links.filter(([label]) => ["Overview", "Orders", "Order requests", "Invoices"].includes(label))
+        ).map(([label, to]) => (
           <NavLink key={to} to={to} end={to.split("/").length === 2}>{label}</NavLink>
         ))}
       </nav>

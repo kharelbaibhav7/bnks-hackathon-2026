@@ -17,6 +17,7 @@ import RetailerDashboard from "./pages/retailer/RetailerDashboard.jsx";
 import RetailerInventory from "./pages/retailer/RetailerInventory.jsx";
 import RetailerOrders from "./pages/retailer/RetailerOrders.jsx";
 import RetailerScan from "./pages/retailer/RetailerScan.jsx";
+import InvoicesPage from "./pages/shared/InvoicesPage.jsx";
 import MessagesPage from "./pages/shared/MessagesPage.jsx";
 import OrderDetail from "./pages/shared/OrderDetail.jsx";
 import WalletPage from "./pages/shared/WalletPage.jsx";
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/retailer/inventory" element={<RetailerInventory />} />
         <Route path="/retailer/orders" element={<RetailerOrders />} />
         <Route path="/retailer/orders/:id" element={<OrderDetail />} />
+        <Route path="/retailer/invoices" element={<InvoicesPage />} />
         <Route path="/retailer/wallet" element={<WalletPage />} />
         <Route path="/retailer/messages" element={<MessagesPage />} />
       </Route>
@@ -51,6 +53,7 @@ export default function App() {
         <Route path="/farmer/inventory" element={<FarmerInventory />} />
         <Route path="/farmer/orders" element={<FarmerOrders />} />
         <Route path="/farmer/orders/:id" element={<OrderDetail />} />
+        <Route path="/farmer/invoices" element={<InvoicesPage />} />
         <Route path="/farmer/history" element={<FarmerHistory />} />
         <Route path="/farmer/wallet" element={<WalletPage />} />
         <Route path="/farmer/messages" element={<MessagesPage />} />

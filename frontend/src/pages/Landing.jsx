@@ -1,19 +1,20 @@
 import { Link } from "react-router-dom";
 import Brand from "../components/Brand.jsx";
+import { FadeIn } from "../components/PageMotion.jsx";
 
 export default function Landing() {
   return (
     <div className="hero-wrap">
       <div className="page">
         <header className="topbar">
-          <Brand />
+          <Brand size={48} />
           <div className="row">
             <Link className="btn ghost" to="/login">Sign in</Link>
             <Link className="btn gold" to="/register">Create account</Link>
           </div>
         </header>
         <section className="hero">
-          <div>
+          <FadeIn>
             <div className="kicker">Farm to mart · no commission agent</div>
             <h1>Empty shelves turn into farmer orders in one pass.</h1>
             <p className="lede">
@@ -24,8 +25,8 @@ export default function Landing() {
               <Link className="btn" to="/register">Start as a mart</Link>
               <Link className="btn ghost" to="/login">Sign in</Link>
             </div>
-          </div>
-          <div className="hero-card panel">
+          </FadeIn>
+          <FadeIn delay={0.08} className="hero-card panel">
             <h3 className="serif" style={{ marginTop: 0 }}>How a day runs</h3>
             <div className="roles">
               <div className="role">
@@ -50,7 +51,7 @@ export default function Landing() {
                 </div>
               </div>
             </div>
-          </div>
+          </FadeIn>
         </section>
       </div>
     </div>

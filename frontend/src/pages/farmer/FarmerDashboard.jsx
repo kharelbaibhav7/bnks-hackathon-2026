@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client.js";
+import { Stagger, StaggerItem } from "../../components/PageMotion.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { money } from "../../utils/format.js";
 
@@ -23,12 +24,12 @@ export default function FarmerDashboard() {
         </div>
         <div className="badge ok">Rating {user.rating}★</div>
       </div>
-      <div className="stats">
-        <div className="card stat"><b>{stats.requests || 0}</b><span>New mart requests</span></div>
-        <div className="card stat"><b>{stats.accepted || 0}</b><span>Accepted, not done</span></div>
-        <div className="card stat"><b>{money(stats.soldAmount)}</b><span>Lifetime sales</span></div>
-        <div className="card stat"><b>{money(stats.wallet)}</b><span>Released to wallet</span></div>
-      </div>
+      <Stagger className="stats">
+        <StaggerItem className="card stat"><b>{stats.requests || 0}</b><span>New mart requests</span></StaggerItem>
+        <StaggerItem className="card stat"><b>{stats.accepted || 0}</b><span>Accepted, not done</span></StaggerItem>
+        <StaggerItem className="card stat"><b>{money(stats.soldAmount)}</b><span>Lifetime sales</span></StaggerItem>
+        <StaggerItem className="card stat"><b>{money(stats.wallet)}</b><span>Released to wallet</span></StaggerItem>
+      </Stagger>
       <div className="card">
         <div className="page-head" style={{ marginBottom: 8 }}>
           <h3 className="serif" style={{ margin: 0 }}>Waiting for you</h3>

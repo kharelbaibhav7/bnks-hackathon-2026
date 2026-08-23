@@ -234,7 +234,7 @@ export const updateJobStatus = asyncHandler(async (req, res) => {
   const order = await Order.findById(job.order);
   if (order) {
     await refreshOrderTotals(order);
-    if (order.status === "delivered" && !order.invoiceSent) {
+    if (order.status === "delivered") {
       try {
         await sendOrderInvoices(order);
       } catch (error) {

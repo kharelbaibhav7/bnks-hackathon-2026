@@ -15,6 +15,8 @@ import {
 } from "../service/matchingService.js";
 import { holdInEscrow } from "../service/escrowService.js";
 import { sendOrderInvoices } from "../service/mailService.js";
+import { attachMartStats, getMartStats, issueOrderInvoices } from "../service/invoiceService.js";
+import Invoice from "../models/Invoice.js";
 
 const populateOrder = (id) =>
   Order.findById(id).populate("retailer", "-password");
@@ -75,7 +77,8 @@ export const listFarmerRequests = asyncHandler(async (req, res) => {
     .populate("order")
     .populate("transportJob")
     .sort({ createdAt: -1 });
-  res.json({ success: true, allocations });
+  const withMart = await attachMartStats(allocations);
+  res.json({ success: true, allocations: withMart });
 });
 
 export const getOrder = asyncHandler(async (req, res) => {
@@ -98,7 +101,16 @@ export const getOrder = asyncHandler(async (req, res) => {
   }
 
   const jobs = await TransportJob.find({ order: order._id }).populate("driver", "-password");
-  res.json({ success: true, order, allocations, jobs });
+  if (order.status === "delivered") {
+    await issueOrderInvoices(order);
+  }
+  const invoices = await Invoice.find({
+    order: order._id,
+    user: req.user._id,
+  }).sort({ issuedAt: -1 });
+  const martStats =
+    req.user.role === "farmer" ? await getMartStats(order.retailer._id || order.retailer) : null;
+  res.json({ success: true, order, allocations, jobs, invoices, martStats });
 });
 
 export const respondAllocation = asyncHandler(async (req, res) => {
@@ -153,8 +165,9 @@ export const respondAllocation = asyncHandler(async (req, res) => {
     .populate("retailer", "-password")
     .populate("order")
     .populate("transportJob");
+  const martStats = accept ? await getMartStats(fresh.retailer._id || fresh.retailer) : null;
 
-  res.json({ success: true, allocation: fresh, order });
+  res.json({ success: true, allocation: fresh, order, martStats });
 });
 
 export const retailerHistory = asyncHandler(async (req, res) => {
@@ -194,9 +207,36 @@ export const resendInvoice = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Invoice is sent only after the full order is delivered");
   }
-  order.invoiceSent = false;
-  const result = await sendOrderInvoices(order);
+  const result = await sendOrderInvoices(order, { forceEmail: true });
   res.json({ success: true, ...result });
+});
+
+export const listInvoices = asyncHandler(async (req, res) => {
+  if (req.user.role === "retailer") {
+    const delivered = await Order.find({ retailer: req.user._id, status: "delivered" });
+    await Promise.all(delivered.map((order) => issueOrderInvoices(order)));
+  } else if (req.user.role === "farmer") {
+    const delivered = await Allocation.find({ farmer: req.user._id, status: "delivered" }).distinct("order");
+    const orders = await Order.find({ _id: { $in: delivered }, status: "delivered" });
+    await Promise.all(orders.map((order) => issueOrderInvoices(order)));
+  } else {
+    res.status(403);
+    throw new Error("Invoices are for marts and farmers");
+  }
+
+  const invoices = await Invoice.find({ user: req.user._id })
+    .populate("order", "status invoiceNumber createdAt")
+    .sort({ issuedAt: -1 });
+  res.json({ success: true, invoices });
+});
+
+export const getInvoice = asyncHandler(async (req, res) => {
+  const invoice = await Invoice.findById(req.params.id).populate("order");
+  if (!invoice || String(invoice.user) !== String(req.user._id)) {
+    res.status(404);
+    throw new Error("Invoice not found");
+  }
+  res.json({ success: true, invoice });
 });
 
 export const rateDelivery = asyncHandler(async (req, res) => {

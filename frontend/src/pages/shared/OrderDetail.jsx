@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { api } from "../../api/client.js";
+import InvoiceCard from "../../components/InvoiceCard.jsx";
+import MartDesk from "../../components/MartDesk.jsx";
 import RouteMap from "../../components/RouteMap.jsx";
 import StatusBadge from "../../components/StatusBadge.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -36,7 +38,12 @@ export default function OrderDetail() {
 
   if (!data) return <div className="card">Loading order…</div>;
 
-  const { order, allocations = [], jobs = [] } = data;
+  const { order, allocations = [], jobs = [], invoices = [], martStats } = data;
+  const invoiceBase = user.role === "farmer" ? "/farmer/invoices" : "/retailer/invoices";
+  const farmerAccepted = user.role === "farmer" && allocations.some((item) => {
+    const farmerId = item.farmer?._id || item.farmer;
+    return String(farmerId) === String(user._id) && !["requested", "rejected"].includes(item.status);
+  });
   const live = jobs.find((job) => job.status !== "delivered") || jobs[0];
 
   const sendNote = async (to) => {
@@ -69,25 +76,32 @@ export default function OrderDetail() {
         <div className="row">
           <StatusBadge status={order.status} />
           {order.status === "delivered" && (
-            <button
-              className="btn small"
-              onClick={async () => {
-                try {
-                  const data = await api.sendInvoice(order._id);
-                  toast.success(`Invoice ${data.invoiceNumber || ""} emailed`);
-                  load();
-                } catch (error) {
-                  toast.error(error.message);
-                }
-              }}
-            >
-              Email invoice
-            </button>
+            <>
+              <Link className="btn small ghost" to={invoiceBase}>All invoices</Link>
+              <button
+                className="btn small"
+                onClick={async () => {
+                  try {
+                    const next = await api.sendInvoice(order._id);
+                    toast.success(next.sent ? `Invoice ${next.invoiceNumber || ""} emailed` : "Invoice is already in the app");
+                    load();
+                  } catch (error) {
+                    toast.error(error.message);
+                  }
+                }}
+              >
+                Email invoice
+              </button>
+            </>
           )}
         </div>
       </div>
       <div className="grid-2">
         <div className="stack">
+          {farmerAccepted && martStats && <MartDesk stats={martStats} />}
+          {invoices.map((invoice) => (
+            <InvoiceCard key={invoice._id} invoice={invoice} />
+          ))}
           {live && (
             <RouteMap
               pickup={live.pickup}
@@ -128,8 +142,8 @@ export default function OrderDetail() {
               {allocation.escrowStatus === "released" && (
                 <div className="badge ok" style={{ marginTop: 8 }}>Escrow released {when(allocation.paidAt)}</div>
               )}
-              {order.invoiceSent && allocation.status === "delivered" && (
-                <div className="badge info" style={{ marginTop: 8 }}>Invoice {order.invoiceNumber} emailed</div>
+              {allocation.status === "delivered" && order.invoiceNumber && (
+                <div className="badge info" style={{ marginTop: 8 }}>Invoice {order.invoiceNumber} in app</div>
               )}
               {user.role === "retailer" && allocation.farmer && (
                 <div className="row" style={{ marginTop: 10 }}>

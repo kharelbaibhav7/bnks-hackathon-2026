@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client.js";
+import { Stagger, StaggerItem } from "../../components/PageMotion.jsx";
 import StatusBadge from "../../components/StatusBadge.jsx";
 import { money, when } from "../../utils/format.js";
 
@@ -22,12 +23,12 @@ export default function RetailerDashboard() {
         </div>
         <Link className="btn gold" to="/retailer/scan">Scan shelves</Link>
       </div>
-      <div className="stats">
-        <div className="card stat"><b>{stats.empty || 0}</b><span>Empty / low items</span></div>
-        <div className="card stat"><b>{stats.pending || 0}</b><span>Waiting on farmers</span></div>
-        <div className="card stat"><b>{stats.inTransit || 0}</b><span>On the road</span></div>
-        <div className="card stat"><b>{money(stats.escrowHeld)}</b><span>Locked in escrow</span></div>
-      </div>
+      <Stagger className="stats">
+        <StaggerItem className="card stat"><b>{stats.empty || 0}</b><span>Empty / low items</span></StaggerItem>
+        <StaggerItem className="card stat"><b>{stats.pending || 0}</b><span>Waiting on farmers</span></StaggerItem>
+        <StaggerItem className="card stat"><b>{stats.inTransit || 0}</b><span>On the road</span></StaggerItem>
+        <StaggerItem className="card stat"><b>{money(stats.escrowHeld)}</b><span>Locked in escrow</span></StaggerItem>
+      </Stagger>
       <div className="card">
         <div className="page-head" style={{ marginBottom: 8 }}>
           <h3 className="serif" style={{ margin: 0 }}>Recent orders</h3>

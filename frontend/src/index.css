@@ -49,20 +49,44 @@ button { cursor: pointer; }
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   font-weight: 700;
+  min-width: 0;
 }
 .brand-logo {
-  border-radius: 12px;
-  object-fit: cover;
-  background: #050505;
   display: block;
-  box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+  height: 42px;
+  width: auto;
+  max-width: 72px;
+  object-fit: contain;
+  object-position: left center;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  flex-shrink: 0;
+}
+.sidebar .brand {
+  padding: 2px 4px 0;
+}
+.sidebar .brand-logo {
+  height: 46px;
+  max-width: 80px;
+  mix-blend-mode: screen;
+}
+.auth-card .brand,
+.topbar .brand {
+  align-items: center;
+}
+.auth-card .brand-logo,
+.topbar .brand-logo {
+  height: 48px;
+  max-width: 84px;
 }
 .brand-word {
   font-family: Fraunces, Georgia, serif;
   font-size: 22px;
   letter-spacing: -0.04em;
+  line-height: 1;
 }
 .brand-word span { color: var(--gold); }
 .brand-light .brand-word { color: #f6e7b2; }
@@ -353,6 +377,38 @@ textarea { min-height: 90px; resize: vertical; }
   background: var(--olive);
   margin-top: 4px;
 }
+.mart-dash {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #f7f0e1;
+}
+.mini-stats {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.mini-stats .stat b { font-size: 20px; }
+.mini-stats .stat span { font-size: 12px; }
+.invoice {
+  background: #fffdf7;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 22px;
+}
+.invoice-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 14px;
+}
+.invoice-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 .empty-state { padding: 28px; text-align: center; color: var(--muted); }
 .chat {
   display: grid;
@@ -385,4 +441,11 @@ textarea { min-height: 90px; resize: vertical; }
 }
 @media (min-width: 901px) {
   .mobile-nav { display: none; }
+}
+@media print {
+  body { background: white; }
+  .sidebar, .mobile-nav, .no-print, .page-head .btn, .page-head .row { display: none !important; }
+  .shell { display: block; }
+  .main { padding: 0; }
+  .invoice { box-shadow: none; border: 0; }
 }

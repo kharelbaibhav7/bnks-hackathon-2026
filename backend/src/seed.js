@@ -2,7 +2,9 @@ import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import { dbUrl } from "./constant/constant.js";
 import Allocation from "./models/Allocation.js";
+import Escrow from "./models/Escrow.js";
 import InventoryItem from "./models/InventoryItem.js";
+import Invoice from "./models/Invoice.js";
 import Message from "./models/Message.js";
 import Order from "./models/Order.js";
 import SaleRecord from "./models/SaleRecord.js";
@@ -22,6 +24,8 @@ export const seedDatabase = async () => {
     Transaction.deleteMany({}),
     Message.deleteMany({}),
     SaleRecord.deleteMany({}),
+    Escrow.deleteMany({}),
+    Invoice.deleteMany({}),
   ]);
 
   const password = await hash("agriflow123");

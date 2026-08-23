@@ -6,6 +6,7 @@ import { email as senderEmail, password as senderPassword } from "../constant/co
 import Allocation from "../models/Allocation.js";
 import Escrow from "../models/Escrow.js";
 import User from "../models/User.js";
+import { issueOrderInvoices } from "./invoiceService.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const logoPath = path.resolve(__dirname, "../../../frontend/public/logo.png");
@@ -193,73 +194,80 @@ const sendInvoiceMail = async ({ to, subject, html }) => {
   });
 };
 
-export const sendOrderInvoices = async (order) => {
-  if (!order || order.invoiceSent) return { sent: false, reason: "already-sent" };
+export const sendOrderInvoices = async (order, { forceEmail = false } = {}) => {
+  const invoices = await issueOrderInvoices(order);
+  if (!invoices.length) return { sent: false, issued: false, reason: "no-delivered" };
+  if (order.invoiceEmailed && !forceEmail) {
+    return { sent: false, issued: true, invoiceNumber: order.invoiceNumber, invoices };
+  }
 
   const allocations = await Allocation.find({
     order: order._id,
     status: "delivered",
   }).populate("farmer").populate("retailer");
 
-  if (!allocations.length) return { sent: false, reason: "no-delivered" };
+  if (!allocations.length) return { sent: false, issued: true, reason: "no-delivered", invoices };
 
   const retailer = allocations[0].retailer || (await User.findById(order.retailer));
-  const invoiceNumber = order.invoiceNumber || `INV-${String(order._id).slice(-8).toUpperCase()}`;
-  const issuedAt = new Date();
+  const invoiceNumber = order.invoiceNumber || invoices[0].number;
+  const issuedAt = order.invoiceSentAt || new Date();
   const results = [];
 
   const allItems = allocations.flatMap((allocation) => allocation.items);
   const allTotal = allocations.reduce((sum, item) => sum + item.totalAmount, 0);
   const firstEscrow = await Escrow.findOne({ order: order._id }).sort({ createdAt: 1 });
 
-  await sendInvoiceMail({
-    to: recipientsFor(retailer),
-    subject: `${invoiceNumber} · AgriFlow escrow settlement`,
-    html: invoiceHtml({
-      invoiceNumber,
-      audience: retailer.storeName || retailer.name,
-      retailer,
-      farmer: {
-        name: `${allocations.length} farm${allocations.length === 1 ? "" : "s"}`,
-        farmName: allocations.map((item) => item.farmer?.farmName || item.farmer?.name).join(", "),
-        email: allocations.map((item) => item.farmer?.email).filter(Boolean).join(", "),
-        phone: "",
-        address: "Multiple pickups",
-        area: "",
-        city: "",
-      },
-      order,
-      items: allItems,
-      total: allTotal,
-      escrow: firstEscrow,
-      issuedAt,
-    }),
-  });
-  results.push({ role: "retailer", email: retailer.email });
-
-  for (const allocation of allocations) {
-    const escrow = await Escrow.findOne({ allocation: allocation._id });
+  try {
     await sendInvoiceMail({
-      to: recipientsFor(allocation.farmer),
-      subject: `${invoiceNumber} · Your AgriFlow farm receipt`,
+      to: recipientsFor(retailer),
+      subject: `${invoiceNumber} · AgriFlow escrow settlement`,
       html: invoiceHtml({
-        invoiceNumber: `${invoiceNumber}-${String(allocation._id).slice(-4).toUpperCase()}`,
-        audience: allocation.farmer.farmName || allocation.farmer.name,
+        invoiceNumber,
+        audience: retailer.storeName || retailer.name,
         retailer,
-        farmer: allocation.farmer,
+        farmer: {
+          name: `${allocations.length} farm${allocations.length === 1 ? "" : "s"}`,
+          farmName: allocations.map((item) => item.farmer?.farmName || item.farmer?.name).join(", "),
+          email: allocations.map((item) => item.farmer?.email).filter(Boolean).join(", "),
+          phone: "",
+          address: "Multiple pickups",
+          area: "",
+          city: "",
+        },
         order,
-        items: allocation.items,
-        total: allocation.totalAmount,
-        escrow,
+        items: allItems,
+        total: allTotal,
+        escrow: firstEscrow,
         issuedAt,
       }),
     });
-    results.push({ role: "farmer", email: allocation.farmer.email });
-  }
+    results.push({ role: "retailer", email: retailer.email });
 
-  order.invoiceSent = true;
-  order.invoiceSentAt = issuedAt;
-  order.invoiceNumber = invoiceNumber;
-  await order.save();
-  return { sent: true, invoiceNumber, results };
+    for (const allocation of allocations) {
+      const escrow = await Escrow.findOne({ allocation: allocation._id });
+      await sendInvoiceMail({
+        to: recipientsFor(allocation.farmer),
+        subject: `${invoiceNumber} · Your AgriFlow farm receipt`,
+        html: invoiceHtml({
+          invoiceNumber: `${invoiceNumber}-${String(allocation._id).slice(-4).toUpperCase()}`,
+          audience: allocation.farmer.farmName || allocation.farmer.name,
+          retailer,
+          farmer: allocation.farmer,
+          order,
+          items: allocation.items,
+          total: allocation.totalAmount,
+          escrow,
+          issuedAt,
+        }),
+      });
+      results.push({ role: "farmer", email: allocation.farmer.email });
+    }
+
+    order.invoiceEmailed = true;
+    await order.save();
+    return { sent: true, issued: true, invoiceNumber, results, invoices };
+  } catch (error) {
+    console.error("Invoice email failed:", error.message);
+    return { sent: false, issued: true, invoiceNumber, invoices, reason: error.message };
+  }
 };

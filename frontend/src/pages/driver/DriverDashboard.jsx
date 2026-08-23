@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client.js";
+import { Stagger, StaggerItem } from "../../components/PageMotion.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { money } from "../../utils/format.js";
 
@@ -23,12 +24,12 @@ export default function DriverDashboard() {
         </div>
         <div className="badge ok">Rating {user.rating}★</div>
       </div>
-      <div className="stats">
-        <div className="card stat"><b>{stats.open || 0}</b><span>Open pickups</span></div>
-        <div className="card stat"><b>{stats.mine || 0}</b><span>On your list</span></div>
-        <div className="card stat"><b>{stats.delivered || 0}</b><span>Completed</span></div>
-        <div className="card stat"><b>{money(stats.costPerTon)}</b><span>Your ask / ton</span></div>
-      </div>
+      <Stagger className="stats">
+        <StaggerItem className="card stat"><b>{stats.open || 0}</b><span>Open pickups</span></StaggerItem>
+        <StaggerItem className="card stat"><b>{stats.mine || 0}</b><span>On your list</span></StaggerItem>
+        <StaggerItem className="card stat"><b>{stats.delivered || 0}</b><span>Completed</span></StaggerItem>
+        <StaggerItem className="card stat"><b>{money(stats.costPerTon)}</b><span>Your ask / ton</span></StaggerItem>
+      </Stagger>
       <div className="card">
         <div className="page-head" style={{ marginBottom: 8 }}>
           <h3 className="serif" style={{ margin: 0 }}>Same-area bundles</h3>

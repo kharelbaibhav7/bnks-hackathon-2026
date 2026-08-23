@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
 import Brand from "../components/Brand.jsx";
+import { FadeIn } from "../components/PageMotion.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { roleHome } from "../utils/format.js";
 
@@ -46,8 +47,8 @@ export default function Register() {
 
   return (
     <div className="auth">
-      <div className="auth-card card" style={{ width: "min(560px, 100%)" }}>
-        <Brand />
+      <FadeIn className="auth-card card" style={{ width: "min(560px, 100%)" }}>
+        <Brand size={48} />
         <h2 className="serif" style={{ margin: "12px 0 0" }}>Join AgriFlow</h2>
         <form className="form" onSubmit={submit}>
           <label>
@@ -85,7 +86,7 @@ export default function Register() {
           <button className="btn" disabled={busy}>{busy ? "Creating…" : "Create account"}</button>
         </form>
         <p>Already on AgriFlow? <Link to="/login">Sign in</Link></p>
-      </div>
+      </FadeIn>
     </div>
   );
 }

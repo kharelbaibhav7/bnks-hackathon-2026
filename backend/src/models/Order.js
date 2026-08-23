@@ -35,6 +35,7 @@ const orderSchema = new mongoose.Schema(
     source: { type: String, enum: ["scan", "manual"], default: "manual" },
     invoiceSent: { type: Boolean, default: false },
     invoiceSentAt: { type: Date },
+    invoiceEmailed: { type: Boolean, default: false },
     invoiceNumber: { type: String, default: "" },
   },
   { timestamps: true }
