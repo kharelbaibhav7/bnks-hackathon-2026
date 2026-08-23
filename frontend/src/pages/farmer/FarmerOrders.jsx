@@ -27,6 +27,16 @@ export default function FarmerOrders() {
     }
   };
 
+  const acceptedMarts = [];
+  const seenMarts = new Set();
+  allocations.forEach((item) => {
+    const key = item.retailer?._id || item.retailer;
+    if (item.martStats && item.status !== "requested" && item.status !== "rejected" && key && !seenMarts.has(String(key))) {
+      seenMarts.add(String(key));
+      acceptedMarts.push(item.martStats);
+    }
+  });
+
   return (
     <div>
       <div className="page-head">
@@ -35,6 +45,11 @@ export default function FarmerOrders() {
           <p>Accept only if you can supply today. After you accept, you can see that mart’s fulfillment desk.</p>
         </div>
       </div>
+      {acceptedMarts.map((stats) => (
+        <FadeIn key={stats.retailerId} className="card" style={{ marginBottom: 14 }}>
+          <MartDesk stats={stats} />
+        </FadeIn>
+      ))}
       <div className="stack">
         {allocations.map((item, index) => {
           const showDesk = item.martStats && item.status !== "requested" && item.status !== "rejected";
@@ -45,6 +60,7 @@ export default function FarmerOrders() {
                   <b>{item.retailer?.storeName || item.retailer?.name}</b>
                   <div style={{ color: "var(--muted)", fontSize: 13 }}>
                     {item.retailer?.area} · {when(item.createdAt)} · {item.retailer?.phone}
+                    {showDesk ? ` · ${item.martStats.ordersFulfilled} fulfilled` : ""}
                   </div>
                 </div>
                 <StatusBadge status={item.status} />
@@ -55,7 +71,6 @@ export default function FarmerOrders() {
                   <span>{row.quantity} kg · {money(row.amount)}</span>
                 </div>
               ))}
-              {showDesk && <MartDesk stats={item.martStats} />}
               <div className="row" style={{ marginTop: 12 }}>
                 {item.status === "requested" && (
                   <>

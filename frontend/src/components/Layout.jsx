@@ -69,9 +69,9 @@ export default function Layout({ role }) {
         </div>
       </aside>
       <main className="main">
-        <PageMotion>
+        <FadeIn>
           <Outlet />
-        </PageMotion>
+        </FadeIn>
       </main>
       <nav className="mobile-nav">
         {(user.role === "driver"
