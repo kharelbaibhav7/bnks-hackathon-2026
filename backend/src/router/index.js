@@ -20,7 +20,6 @@ import {
   getInvoice,
   listInvoices,
   rateDelivery,
-  resendInvoice,
   respondAllocation,
   retailerHistory,
 } from "../controller/orderController.js";
@@ -75,7 +74,6 @@ router.post("/allocations/:id/respond", protect, restrictTo("farmer"), respondAl
 router.get("/history/retailer", protect, restrictTo("retailer"), retailerHistory);
 router.get("/history/farmer", protect, restrictTo("farmer"), farmerHistory);
 router.post("/ratings", protect, restrictTo("retailer"), rateDelivery);
-router.post("/orders/:id/invoice", protect, resendInvoice);
 router.get("/invoices", protect, restrictTo("retailer", "farmer"), listInvoices);
 router.get("/invoices/:id", protect, restrictTo("retailer", "farmer"), getInvoice);
 

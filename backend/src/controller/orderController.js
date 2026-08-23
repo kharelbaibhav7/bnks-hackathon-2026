@@ -14,7 +14,6 @@ import {
   sourceOrderFromFarmers,
 } from "../service/matchingService.js";
 import { holdInEscrow } from "../service/escrowService.js";
-import { sendOrderInvoices } from "../service/mailService.js";
 import { attachMartStats, getMartStats, issueOrderInvoices } from "../service/invoiceService.js";
 import Invoice from "../models/Invoice.js";
 
@@ -188,27 +187,6 @@ export const farmerHistory = asyncHandler(async (req, res) => {
     .populate("retailer", "name storeName")
     .sort({ createdAt: -1 });
   res.json({ success: true, allocations, sales });
-});
-
-export const resendInvoice = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id);
-  if (!order) {
-    res.status(404);
-    throw new Error("Order not found");
-  }
-  const isParty =
-    String(order.retailer) === String(req.user._id) ||
-    (await Allocation.exists({ order: order._id, farmer: req.user._id }));
-  if (!isParty) {
-    res.status(403);
-    throw new Error("You cannot request this invoice");
-  }
-  if (order.status !== "delivered") {
-    res.status(400);
-    throw new Error("Invoice is sent only after the full order is delivered");
-  }
-  const result = await sendOrderInvoices(order, { forceEmail: true });
-  res.json({ success: true, ...result });
 });
 
 export const listInvoices = asyncHandler(async (req, res) => {

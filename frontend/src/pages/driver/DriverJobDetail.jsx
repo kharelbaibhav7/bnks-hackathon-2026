@@ -36,7 +36,7 @@ export default function DriverJobDetail() {
     try {
       await api.jobStatus(job._id, { status, lat, lng });
       if (status === "picked_up") toast.success("Goods collected. Funds stay in AgriFlow escrow");
-      if (status === "delivered") toast.success("Delivered. Escrow released and invoices emailed");
+      if (status === "delivered") toast.success("Delivered. Escrow released and invoices are in the app");
       load();
     } catch (error) {
       toast.error(error.message);

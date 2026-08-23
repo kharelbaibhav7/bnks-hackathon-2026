@@ -76,23 +76,7 @@ export default function OrderDetail() {
         <div className="row">
           <StatusBadge status={order.status} />
           {order.status === "delivered" && (
-            <>
-              <Link className="btn small ghost" to={invoiceBase}>All invoices</Link>
-              <button
-                className="btn small"
-                onClick={async () => {
-                  try {
-                    const next = await api.sendInvoice(order._id);
-                    toast.success(next.sent ? `Invoice ${next.invoiceNumber || ""} emailed` : "Invoice is already in the app");
-                    load();
-                  } catch (error) {
-                    toast.error(error.message);
-                  }
-                }}
-              >
-                Email invoice
-              </button>
-            </>
+            <Link className="btn small" to={invoiceBase}>All invoices</Link>
           )}
         </div>
       </div>

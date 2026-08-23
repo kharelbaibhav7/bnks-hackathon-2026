@@ -2,16 +2,19 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client.js";
 import { Stagger, StaggerItem } from "../../components/PageMotion.jsx";
+import RecentInvoices from "../../components/RecentInvoices.jsx";
 import StatusBadge from "../../components/StatusBadge.jsx";
 import { money, when } from "../../utils/format.js";
 
 export default function RetailerDashboard() {
   const [stats, setStats] = useState({});
   const [orders, setOrders] = useState([]);
+  const [invoices, setInvoices] = useState([]);
 
   useEffect(() => {
     api.stats().then((data) => setStats(data.stats || {})).catch(() => {});
     api.orders().then((data) => setOrders(data.orders || [])).catch(() => {});
+    api.invoices().then((data) => setInvoices(data.invoices || [])).catch(() => {});
   }, []);
 
   return (
@@ -44,6 +47,9 @@ export default function RetailerDashboard() {
             <StatusBadge status={order.status} />
           </Link>
         ))}
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <RecentInvoices invoices={invoices} to="/retailer/invoices" showTransport />
       </div>
     </div>
   );

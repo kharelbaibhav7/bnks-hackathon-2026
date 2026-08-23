@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client.js";
 import { Stagger, StaggerItem } from "../../components/PageMotion.jsx";
+import RecentInvoices from "../../components/RecentInvoices.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { money } from "../../utils/format.js";
 
@@ -9,10 +10,12 @@ export default function FarmerDashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState({});
   const [requests, setRequests] = useState([]);
+  const [invoices, setInvoices] = useState([]);
 
   useEffect(() => {
     api.stats().then((data) => setStats(data.stats || {})).catch(() => {});
     api.farmerRequests().then((data) => setRequests((data.allocations || []).filter((item) => item.status === "requested"))).catch(() => {});
+    api.invoices().then((data) => setInvoices(data.invoices || [])).catch(() => {});
   }, []);
 
   return (
@@ -47,6 +50,9 @@ export default function FarmerDashboard() {
             <b>{money(item.totalAmount)}</b>
           </Link>
         ))}
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <RecentInvoices invoices={invoices} to="/farmer/invoices" />
       </div>
     </div>
   );

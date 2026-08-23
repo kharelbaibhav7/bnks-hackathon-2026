@@ -7,7 +7,7 @@ import TransportJob from "../models/TransportJob.js";
 import { KG_PER_TON } from "../constant/produce.js";
 import { refreshOrderTotals } from "../service/matchingService.js";
 import { releaseEscrow } from "../service/escrowService.js";
-import { sendOrderInvoices } from "../service/mailService.js";
+import { issueOrderInvoices } from "../service/invoiceService.js";
 
 const populateJob = (id) =>
   TransportJob.findById(id)
@@ -235,11 +235,7 @@ export const updateJobStatus = asyncHandler(async (req, res) => {
   if (order) {
     await refreshOrderTotals(order);
     if (order.status === "delivered") {
-      try {
-        await sendOrderInvoices(order);
-      } catch (error) {
-        console.error("Invoice email failed:", error.message);
-      }
+      await issueOrderInvoices(order);
     }
   }
 
